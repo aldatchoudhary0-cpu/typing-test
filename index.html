@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Typing Exam Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container" id="app">
+
+  <h1>Typing Test</h1>
+
+  <!-- MODE -->
+  <div class="mode-select">
+    <label><input type="radio" name="mode" value="practice" checked> Practice</label>
+    <label><input type="radio" name="mode" value="exam"> Exam</label>
+  </div>
+
+  <!-- EXAM SELECT -->
+  <div class="exam-select">
+    <label>Exam:</label>
+    <select id="exam">
+      <option value="ssc">SSC</option>
+      <option value="railway">Railway</option>
+      <option value="delhi-police">Delhi Police</option>
+      <option value="ldc-deo">LDC / DEO</option>
+    </select>
+  </div>
+
+  <div class="timer">
+    Time Left: <span id="time">0</span> sec
+  </div>
+
+  <div class="paragraph no-select" id="paragraph"></div>
+
+  <div class="stats">
+    <p>WPM: <span id="wpm">0</span></p>
+    <p>Accuracy: <span id="accuracy">0</span>%</p>
+    <p>Mistakes: <span id="mistakes">0</span></p>
+    <p>Backspace: <span id="bsUsed">0</span></p>
+  </div>
+
+  <textarea id="input" placeholder="Start typing here..." autofocus></textarea>
+
+  <button id="restart">Restart</button>
+
+  <div id="resultBox" class="result hidden">
+    <h2>Result</h2>
+    <p>WPM: <span id="finalWpm"></span></p>
+    <p>Accuracy: <span id="finalAcc"></span>%</p>
+    <p>Mistakes: <span id="finalMistakes"></span></p>
+    <p>Backspace Used: <span id="finalBs"></span></p>
+    <p id="status"></p>
+    <p id="examRule"></p>
+  </div>
+
+</div>
+
+  <!-- <audio id="typingAmbience" src="typing-center.mp3" loop></audio>-->
+
+<script src="script.js"></script>
+</body>
+</html>
