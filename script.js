@@ -1,231 +1,134 @@
-/* =========================
-   CONFIG (DAY-3 LOCK)
-========================= */
-const EXAMS = {
-  ssc: {
-    key: "ssc_cgl",
+// ===============================
+// CONFIG
+// ===============================
+const examConfig = {
+  SSC: {
     time: 15 * 60,
-    minKDPH: 8000,
-    backspaceAllowed: true,
-    evaluation: "SSC_DEST"
+    minKDPH: 8000
+  },
+  CHSL: {
+    time: 10 * 60,
+    minKDPH: 9000
+  },
+  CPO: {
+    time: 10 * 60,
+    minKDPH: 7500
   }
 };
 
-/* =========================
-   DOM
-========================= */
-const paragraphEl = document.getElementById("paragraph");
-const inputEl = document.getElementById("input");
-const timeEl = document.getElementById("time");
+// ===============================
+// VARIABLES
+// ===============================
+let timer = null;
+let timeLeft = 0;
+let started = false;
+let mistakes = 0;
+let backspaceCount = 0;
+let typedChars = 0;
 
-const wpmEl = document.getElementById("wpm");
-const accEl = document.getElementById("accuracy");
-const misEl = document.getElementById("mistakes");
-const bsUsedEl = document.getElementById("bsUsed");
-
+// ===============================
+// ELEMENTS
+// ===============================
+const examSelect = document.getElementById("examSelect");
+const timeDisplay = document.getElementById("time");
+const inputBox = document.getElementById("input");
+const paraBox = document.getElementById("paragraph");
 const restartBtn = document.getElementById("restart");
-const resultBox = document.getElementById("resultBox");
 
-const finalWpmEl = document.getElementById("finalWpm");
-const finalAccEl = document.getElementById("finalAcc");
-const finalMisEl = document.getElementById("finalMistakes");
-const finalBsEl = document.getElementById("finalBs");
-
-const statusEl = document.getElementById("status");
-const examRuleEl = document.getElementById("examRule");
-
-const examSelect = document.getElementById("exam");
-const modeRadios = document.querySelectorAll("input[name='mode']");
-const typingAmbience = document.getElementById("typingAmbience");
-
-/* =========================
-   STATE
-========================= */
-let PARAGRAPHS = {};
+// ===============================
+// LOAD PARAGRAPH
+// ===============================
 let paragraphText = "";
-let time = 0;
-let interval = null;
-let testStarted = false;
-let mode = "practice";
-let backspaceUsed = 0;
-let correctKeyPress = 0;
 
-/* =========================
-   INIT
-========================= */
-loadParagraphs().then(resetTest);
-
-/* =========================
-   LOAD PARAGRAPHS (JSON)
-========================= */
-async function loadParagraphs() {
-  const res = await fetch("data/paragraphs.json");
-  PARAGRAPHS = await res.json();
-}
-
-function pickRandomParagraph() {
-  const examKey = EXAMS.ssc.key;
-  const list = PARAGRAPHS[examKey];
-  const rand = Math.floor(Math.random() * list.length);
-  paragraphText = list[rand].text;
-}
-
-/* =========================
-   MODE CHANGE
-========================= */
-modeRadios.forEach(r => {
-  r.addEventListener("change", () => {
-    mode = r.value;
-    renderParagraph();
+fetch("paragraphs.json")
+  .then(res => res.json())
+  .then(data => {
+    paragraphText = data[0];
+    paraBox.innerText = paragraphText;
   });
-});
 
-/* =========================
-   SECURITY
-========================= */
-["copy","cut","paste"].forEach(evt =>
-  document.addEventListener(evt, e => e.preventDefault())
-);
+// ===============================
+// TIMER FUNCTIONS
+// ===============================
+function setTimeByExam() {
+  clearInterval(timer);
+  started = false;
+  const exam = examSelect.value;
+  timeLeft = examConfig[exam].time;
+  updateTimeUI();
+}
 
-/* =========================
-   EVENTS
-========================= */
-examSelect.addEventListener("change", resetTest);
-restartBtn.addEventListener("click", resetTest);
+function updateTimeUI() {
+  const min = Math.floor(timeLeft / 60);
+  const sec = timeLeft % 60;
+  timeDisplay.innerText = `${min}:${sec < 10 ? "0" : ""}${sec}`;
+}
 
-inputEl.addEventListener("keydown", e => {
-  if (mode === "exam" && testStarted) {
-    examSelect.disabled = true;
-    modeRadios.forEach(r => r.disabled = true);
-    restartBtn.disabled = true;
-  }
-  if (e.key === "Backspace" && mode === "exam") {
-    backspaceUsed++;
-    bsUsedEl.textContent = backspaceUsed;
-  }
-});
+function startTimer() {
+  if (started) return;
+  started = true;
 
-inputEl.addEventListener("input", () => {
-  if (!testStarted) startTest();
-
-  const chars = paragraphEl.querySelectorAll("span");
-  const typed = inputEl.value;
-
-  correctKeyPress = 0;
-  let mistakes = 0;
-
-  chars.forEach((span, i) => {
-    span.className = "";
-    if (typed[i] == null) return;
-
-    if (typed[i] === span.innerText) {
-      correctKeyPress++;
-      if (mode === "practice") span.classList.add("correct");
-    } else {
-      mistakes++;
-      if (mode === "practice") span.classList.add("wrong");
+  timer = setInterval(() => {
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      inputBox.disabled = true;
+      showResult();
+      return;
     }
-  });
-
-  if (mode === "practice" && chars[typed.length]) {
-    chars[typed.length].classList.add("current");
-  }
-
-  calculateStats(false);
-
-  if (mode === "exam" && time <= 0) endTest();
-});
-
-/* =========================
-   RENDER
-========================= */
-function renderParagraph() {
-  paragraphEl.innerHTML = "";
-  paragraphText.split("").forEach(ch => {
-    const span = document.createElement("span");
-    span.innerText = ch;
-    paragraphEl.appendChild(span);
-  });
-}
-
-/* =========================
-   TIMER
-========================= */
-function startTest() {
-  testStarted = true;
- // typingAmbience.play();
-
-  interval = setInterval(() => {
-    time--;
-    timeEl.textContent = time;
-    if (time <= 0) endTest();
+    timeLeft--;
+    updateTimeUI();
   }, 1000);
 }
 
-/* =========================
-   END TEST
-========================= */
-function endTest() {
-  clearInterval(interval);
-  inputEl.disabled = true;
-  //typingAmbience.pause();
+// ===============================
+// TYPING LOGIC
+// ===============================
+inputBox.addEventListener("input", (e) => {
+  startTimer();
 
-  examSelect.disabled = false;
-  modeRadios.forEach(r => r.disabled = false);
-  restartBtn.disabled = false;
+  const value = inputBox.value;
+  typedChars++;
 
-  calculateStats(true);
-  resultBox.classList.remove("hidden");
+  if (
+    value[value.length - 1] !==
+    paragraphText[value.length - 1]
+  ) {
+    mistakes++;
+  }
+});
+
+inputBox.addEventListener("keydown", (e) => {
+  if (e.key === "Backspace") {
+    backspaceCount++;
+  }
+});
+
+// ===============================
+// RESULT
+// ===============================
+function showResult() {
+  const exam = examSelect.value;
+  const timeSpent = examConfig[exam].time;
+  const kdpH = Math.round((typedChars * 3600) / timeSpent);
+
+  alert(
+    `RESULT\n\n` +
+    `KDPH: ${kdpH}\n` +
+    `Mistakes: ${mistakes}\n` +
+    `Backspace: ${backspaceCount}\n\n` +
+    (kdpH >= examConfig[exam].minKDPH
+      ? "QUALIFIED ✅"
+      : "NOT QUALIFIED ❌")
+  );
 }
 
-/* =========================
-   STATS (SSC DEST)
-========================= */
-function calculateStats(final) {
-  const typed = inputEl.value;
-  let mistakes = Math.max(typed.length - correctKeyPress, 0);
+// ===============================
+// EVENTS
+// ===============================
+examSelect.addEventListener("change", setTimeByExam);
+restartBtn.addEventListener("click", () => location.reload());
 
-  const elapsed = (EXAMS.ssc.time - time) || 1;
-  const kdph = Math.round((correctKeyPress * 3600) / elapsed);
-
-  wpmEl.textContent = Math.round((typed.length / 5) / (elapsed / 60));
-  accEl.textContent = typed.length ? Math.round((correctKeyPress / typed.length) * 100) : 0;
-  misEl.textContent = mistakes;
-
-  if (!final) return;
-
-  finalWpmEl.textContent = wpmEl.textContent;
-  finalAccEl.textContent = accEl.textContent;
-  finalMisEl.textContent = mistakes;
-  finalBsEl.textContent = backspaceUsed;
-
-  examRuleEl.innerText = "SSC CGL DEST | 15 Min | Min 8000 KDPH | Qualifying";
-
-  const pass = kdph >= EXAMS.ssc.minKDPH;
-  statusEl.innerText = pass ? "QUALIFIED ✅" : "NOT QUALIFIED ❌";
-  statusEl.className = pass ? "status-pass" : "status-fail";
-}
-
-/* =========================
-   RESET
-========================= */
-function resetTest() {
-  clearInterval(interval);
-  interval = null;
-  testStarted = false;
-  backspaceUsed = 0;
-  correctKeyPress = 0;
-
-  pickRandomParagraph();
-
-  time = EXAMS.ssc.time;
-  timeEl.textContent = time;
-  bsUsedEl.textContent = 0;
-
-  inputEl.value = "";
-  inputEl.disabled = false;
-  inputEl.focus();
-
-  resultBox.classList.add("hidden");
-  renderParagraph();
-}
+// ===============================
+// INIT
+// ===============================
+setTimeByExam();
